@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Sequence
+from typing import List, Sequence
 
 KLE_UNIT_MM = 19.05
 
@@ -17,8 +17,8 @@ def _default_state():
 class KLEKey:
     label: str
     row_index: int
-    x_units: float
-    y_units: float
+    x_units: float  # left edge in units
+    y_units: float  # top edge in units
     width_units: float
     height_units: float
 
@@ -37,6 +37,14 @@ class KLEKey:
     @property
     def height_mm(self) -> float:
         return self.height_units * KLE_UNIT_MM
+
+    @property
+    def center_x_mm(self) -> float:
+        return (self.x_units + self.width_units / 2.0) * KLE_UNIT_MM
+
+    @property
+    def center_y_mm(self) -> float:
+        return (self.y_units + self.height_units / 2.0) * KLE_UNIT_MM
 
 
 @dataclass
@@ -57,7 +65,7 @@ def load_kle_layout(path: str | Path) -> KLELayout:
     return parse_kle_layout(data)
 
 
-def parse_kle_layout(layout_data: Sequence[Sequence], *, unit: float = KLE_UNIT_MM) -> KLELayout:
+def parse_kle_layout(layout_data: Sequence[Sequence]) -> KLELayout:
     rows: List[List[KLEKey]] = []
 
     for row_index, row in enumerate(layout_data):
@@ -89,6 +97,12 @@ def parse_kle_layout(layout_data: Sequence[Sequence], *, unit: float = KLE_UNIT_
             x_cursor += width
             state = _default_state()
 
+        # Align left edges for rows 0-2 to ensure consistent staggering
+        if row_index in (0, 1, 2) and row_keys:
+            min_left = min(key.x_units for key in row_keys)
+            for key in row_keys:
+                key.x_units -= min_left
+
         rows.append(row_keys)
 
     return KLELayout(rows=rows)
@@ -105,6 +119,7 @@ def apply_kle_layout(simulator, kle_layout: KLELayout):
         for c in range(cols_to_use):
             key = row_keys[c]
             fp = simulator.footprints[r][c]
-            fp.move_to(key.x_mm, key.y_mm)
+            fp.move_to(key.center_x_mm, key.center_y_mm)
             fp.width = key.width_mm
             fp.height = key.height_mm
+            fp.rotate_to(0.0)
