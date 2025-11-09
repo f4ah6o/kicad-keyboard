@@ -13,6 +13,7 @@ from visualizer import plot_grin_layout
 
 EXPORT_DIR = Path(__file__).parent / "exports"
 EXPORT_DIR.mkdir(exist_ok=True)
+PNG_DIR = Path(__file__).parent
 DEFAULT_GAP_THRESHOLD = 0.5  # millimeters
 
 
@@ -65,6 +66,24 @@ def print_spacing_summary(example_name: str, spacing: dict):
     print(f"  Small gaps (≤{DEFAULT_GAP_THRESHOLD} mm): {len(spacing['small_gaps'])}")
 
 
+def export_layout_png(sim, example_name: str, stage: str, *, filename: str | None = None, show_corners: bool = False):
+    """
+    Save a PNG visualization for the current simulator state.
+    """
+    if filename is None:
+        filename = PNG_DIR / f"grin_layout_{example_name}_{stage}.png"
+    else:
+        filename = Path(filename)
+
+    plot_grin_layout(
+        sim,
+        filename=str(filename),
+        show=False,
+        show_corners=show_corners,
+    )
+    print(f"Layout PNG saved: {filename}")
+
+
 def example_basic():
     """Basic example with default parameters."""
     print("=" * 60)
@@ -83,6 +102,7 @@ def example_basic():
     )
 
     save_layout_snapshot(sim, "basic", "initial")
+    export_layout_png(sim, "basic", "initial")
 
     # Perform layout
     sim.layout()
@@ -102,7 +122,7 @@ def example_basic():
     save_layout_snapshot(sim, "basic", "final", spacing=spacing)
 
     # Visualize
-    plot_grin_layout(sim, filename="grin_layout_basic.png", show=False)
+    export_layout_png(sim, "basic", "final", filename="grin_layout_basic.png")
 
     return sim
 
@@ -125,6 +145,7 @@ def example_custom():
     )
 
     save_layout_snapshot(sim, "custom", "initial")
+    export_layout_png(sim, "custom", "initial")
 
     # Perform layout
     sim.layout()
@@ -137,7 +158,7 @@ def example_custom():
     save_layout_snapshot(sim, "custom", "final", spacing=spacing)
 
     # Visualize
-    plot_grin_layout(sim, filename="grin_layout_custom.png", show=False)
+    export_layout_png(sim, "custom", "final", filename="grin_layout_custom.png")
 
     return sim
 
@@ -160,6 +181,7 @@ def example_compact():
     )
 
     save_layout_snapshot(sim, "compact", "initial")
+    export_layout_png(sim, "compact", "initial")
 
     # Perform layout
     sim.layout()
@@ -172,11 +194,12 @@ def example_compact():
     save_layout_snapshot(sim, "compact", "final", spacing=spacing)
 
     # Visualize with corners shown
-    plot_grin_layout(
+    export_layout_png(
         sim,
+        "compact",
+        "final",
         filename="grin_layout_compact.png",
-        show=False,
-        show_corners=True
+        show_corners=True,
     )
 
     return sim

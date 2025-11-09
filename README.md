@@ -43,6 +43,7 @@ Grin配列のレイアウトをシミュレートし、可視化します。
 - **可視化機能**: Matplotlibによる配置結果の描画
 - **柔軟なパラメータ**: 行数、列数、半径、ピッチなどをカスタマイズ可能
 - **JSONスナップショット**: `simulator/exports/*.json` に初期/最終レイアウトを自動出力
+- **PNGスナップショット**: 各サンプルで初期・最終それぞれの PNG を自動生成
 
 詳細は [simulator/README.md](simulator/README.md) を参照してください。
 
@@ -77,7 +78,7 @@ uv sync                 # 初回のみ。 .venv が作成される
 uv run python simulator/example.py
 ```
 
-`uv sync` を省略しても `uv run` 時に自動で依存関係が解決されます。`grin_layout_*.png` と `simulator/exports/*.json` が生成されれば成功です。
+`uv sync` を省略しても `uv run` 時に自動で依存関係が解決されます。`grin_layout_*.png`（初期・最終）と `simulator/exports/*.json` が生成されれば成功です。
 
 3. **pip を使う場合の代替手順**
 

@@ -14,6 +14,7 @@ Pythonで実装された、Grin配列キーボードレイアウトのシミュ�
 - **可視化**: Matplotlibによる配置結果の可視化
 - **JSONスナップショット**: `example.py` 実行時に初期/最終レイアウトを `exports/*.json` に保存
 - **干渉評価API**: `footprint_spacing()` / `evaluate_spacing()` で干渉や間隙を数値化
+- **PNGスナップショット**: 各サンプルで初期・最終の PNG を自動生成
 
 ## インストール
 
@@ -71,8 +72,11 @@ python example.py
 
 これにより以下のファイルが生成されます:
 - `grin_layout_basic.png` - 基本的なレイアウト
+- `grin_layout_basic_initial.png` - 基本例の初期配置
 - `grin_layout_custom.png` - カスタムパラメータのレイアウト
+- `grin_layout_custom_initial.png` - カスタム例の初期配置
 - `grin_layout_compact.png` - コンパクトなレイアウト
+- `grin_layout_compact_initial.png` - コンパクト例の初期配置
 - `grin_layout_api_demo.png` - APIの直接使用例
 - `exports/*.json` - 各例の初期/最終レイアウトと干渉解析結果
 
