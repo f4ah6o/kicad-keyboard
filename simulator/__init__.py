@@ -18,6 +18,12 @@ from .api import (
 )
 from .grin_simulator import GrinSimulator, Section, SectionType
 from .visualizer import GrinVisualizer, plot_grin_layout
+from .kle_layout import (
+    load_kle_layout,
+    apply_kle_layout,
+    KLELayout,
+    KLEKey,
+)
 
 __version__ = "0.1.0"
 
@@ -40,4 +46,9 @@ __all__ = [
     # Visualization
     "GrinVisualizer",
     "plot_grin_layout",
+    # Layout utilities
+    "load_kle_layout",
+    "apply_kle_layout",
+    "KLELayout",
+    "KLEKey",
 ]

@@ -49,6 +49,7 @@ class GrinSimulator:
         radius_step: float = 20.0,
         base_pitch: float = 19.05,
         y_up: bool = False,
+        cols_per_row: List[int] | None = None,
     ):
         """
         Initialize the Grin simulator.
@@ -61,9 +62,17 @@ class GrinSimulator:
             radius_step: Radius decrease per row (bottom rows have smaller radius)
             base_pitch: Key pitch (center-to-center distance)
             y_up: Whether the positive Y axis points upward (default False for screen coords)
+            cols_per_row: Optional explicit column counts per row (default: uniform)
         """
         self.rows = rows
-        self.cols = cols
+        if cols_per_row is not None:
+            if len(cols_per_row) != rows:
+                raise ValueError("cols_per_row must match the number of rows")
+            self.cols_per_row = cols_per_row
+            self.cols = max(cols_per_row) if cols_per_row else cols
+        else:
+            self.cols = cols
+            self.cols_per_row = [cols for _ in range(rows)]
         self.center = center
         self.base_radius = base_radius
         self.radius_step = radius_step
@@ -79,7 +88,7 @@ class GrinSimulator:
         self.footprints: List[List[Footprint]] = []
         for r in range(rows):
             row_fps = []
-            for c in range(cols):
+            for c in range(self.cols_per_row[r]):
                 fp = Footprint(row=r, col=c)
                 row_fps.append(fp)
             self.footprints.append(row_fps)
@@ -98,7 +107,11 @@ class GrinSimulator:
 
         for r in range(self.rows):
             row_sections = []
-            total_cols = self.cols
+            total_cols = len(self.footprints[r])
+
+            if total_cols == 0:
+                sections.append(row_sections)
+                continue
 
             # Simple division pattern for demonstration
             # Adjust these numbers based on your specific layout needs
@@ -122,15 +135,17 @@ class GrinSimulator:
                     (SectionType.LOWER_ARC, right_lower),
                     (SectionType.HORIZONTAL, right_h),
                 ]
-            else:
-                # For fewer columns, simplify
+            elif total_cols >= 5:
+                middle = max(total_cols - 4, 1)
                 sections_def = [
                     (SectionType.HORIZONTAL, 1),
-                    (SectionType.LOWER_ARC, 2),
-                    (SectionType.UPPER_ARC, total_cols - 6),
-                    (SectionType.LOWER_ARC, 2),
+                    (SectionType.LOWER_ARC, 1),
+                    (SectionType.UPPER_ARC, middle),
+                    (SectionType.LOWER_ARC, 1),
                     (SectionType.HORIZONTAL, 1),
                 ]
+            else:
+                sections_def = [(SectionType.HORIZONTAL, total_cols)]
 
             # Create sections with column indices
             col_idx = 0
@@ -272,7 +287,8 @@ class GrinSimulator:
         print(f"\n{'='*60}")
         print(f"Grin Array Layout Summary")
         print(f"{'='*60}")
-        print(f"Rows: {self.rows}, Cols: {self.cols}")
+        print(f"Rows: {self.rows}, Max Cols: {self.cols}")
+        print(f"Cols per row: {', '.join(str(len(row)) for row in self.footprints)}")
         print(f"Center: {self.center}")
         print(f"Base Radius: {self.base_radius}, Step: {self.radius_step}")
         print(f"Base Pitch: {self.base_pitch}")

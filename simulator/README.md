@@ -42,17 +42,23 @@ python example.py
 
 ```python
 from grin_simulator import GrinSimulator
+from kle_layout import load_kle_layout, apply_kle_layout
 from visualizer import plot_grin_layout
 
 # シミュレータを作成
 sim = GrinSimulator(
-    rows=3,           # 行数
-    cols=10,          # 列数
-    center=(150.0, 150.0),      # 円弧の中心座標
-    base_radius=120.0,          # 最上段の半径
-    radius_step=15.0,           # 行ごとの半径減少量
-    base_pitch=19.05            # キーピッチ (mm)
+    rows=4,                    # 行数
+    cols=11,                   # 最大列数
+    center=(150.0, 150.0),     # 円弧の中心座標
+    base_radius=120.0,         # 最上段の半径
+    radius_step=15.0,          # 行ごとの半径減少量
+    base_pitch=19.05,          # キーピッチ (mm)
+    cols_per_row=[11, 10, 10, 4]  # 行ごとのキー数
 )
+
+# 初期配置を KLE データから読み込み
+layout = load_kle_layout("layouts/standard_35_kle.json")
+apply_kle_layout(sim, layout)
 
 # レイアウトを実行
 sim.layout()
@@ -79,6 +85,7 @@ python example.py
 - `grin_layout_compact_initial.png` - コンパクト例の初期配置
 - `grin_layout_api_demo.png` - APIの直接使用例
 - `exports/*.json` - 各例の初期/最終レイアウトと干渉解析結果
+- `layouts/standard_35_kle.json` - KLE 形式のリファレンスレイアウト
 
 ## API リファレンス
 
@@ -166,7 +173,9 @@ simulator/
 ├── api.py                # コアAPI関数
 ├── grin_simulator.py     # シミュレータ本体
 ├── visualizer.py         # 可視化ツール
+├── kle_layout.py         # KLE レイアウト読込ユーティリティ
 ├── example.py            # 使用例
+├── layouts/              # Keyboard Layout Editor 形式のデータ
 ├── requirements.txt      # 依存パッケージ
 └── README.md            # このファイル
 ```

@@ -9,12 +9,14 @@ from pathlib import Path
 import numpy as np
 
 from grin_simulator import GrinSimulator
+from kle_layout import apply_kle_layout, load_kle_layout
 from visualizer import plot_grin_layout
 
 EXPORT_DIR = Path(__file__).parent / "exports"
 EXPORT_DIR.mkdir(exist_ok=True)
 PNG_DIR = Path(__file__).parent
 DEFAULT_GAP_THRESHOLD = 0.5  # millimeters
+KLE_LAYOUT = load_kle_layout(Path(__file__).parent / "layouts" / "standard_35_kle.json")
 
 
 def _footprint_snapshot(sim):
@@ -84,6 +86,11 @@ def export_layout_png(sim, example_name: str, stage: str, *, filename: str | Non
     print(f"Layout PNG saved: {filename}")
 
 
+def initialize_from_kle(sim):
+    """Populate the simulator's initial positions using the reference KLE layout."""
+    apply_kle_layout(sim, KLE_LAYOUT)
+
+
 def example_basic():
     """Basic example with default parameters."""
     print("=" * 60)
@@ -92,15 +99,17 @@ def example_basic():
 
     # Create simulator with default parameters
     sim = GrinSimulator(
-        rows=3,
-        cols=10,
+        rows=4,
+        cols=11,
         center=(150.0, 150.0),
         base_radius=120.0,
         radius_step=15.0,
         base_pitch=19.05,
         y_up=False,
+        cols_per_row=[11, 10, 10, 4],
     )
 
+    initialize_from_kle(sim)
     save_layout_snapshot(sim, "basic", "initial")
     export_layout_png(sim, "basic", "initial")
 
@@ -144,6 +153,7 @@ def example_custom():
         y_up=False,
     )
 
+    initialize_from_kle(sim)
     save_layout_snapshot(sim, "custom", "initial")
     export_layout_png(sim, "custom", "initial")
 
@@ -180,6 +190,7 @@ def example_compact():
         y_up=False,
     )
 
+    initialize_from_kle(sim)
     save_layout_snapshot(sim, "compact", "initial")
     export_layout_png(sim, "compact", "initial")
 
