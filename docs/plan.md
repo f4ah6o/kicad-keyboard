@@ -2,9 +2,10 @@
 * 目的：最小APIでフットプリントを **Grin配列**（水平 → 下側円弧 → 上側円弧 → 下側円弧 → 水平）へ再配置する。
 * 座標系：列方向=x、行方向=y。複数行で **共通中心 C=(Cx,Cy)** を共有し、下段ほど半径 R[r] を小さくする。
 * 制約：**下側円弧は各行 左右2キーまで**（最下段除外）、**円弧切替は上側優先**、**角接触**（円中心側の角どうし）を基準とする。
+* 座標系の向き：Y 軸は下向きが正。`y_up=False` を既定とする。 
 * 最小API（3+2ユーティリティ）の方針：  
   * `place_on_arc(fp, C, R, theta)` … 円弧上の中心座標に配置  
-  * `orient_to_tangent(fp, theta, orientation, y_up=True)` … 接線方向に回転  
+  * `orient_to_tangent(fp, theta, orientation, y_up=False)` … 接線方向に回転  
   * `snap_corner(fp, which, target)` … 角を点または他フットプリント角にスナップ  
   * `angle_step = 2*asin(pitch/(2R))`（ユーティリティ）  
   * `circle_point(C,R,theta)`（ユーティリティ）
@@ -67,9 +68,9 @@ for r in rows:
   * `place_on_arc(fp, C, R, theta)`  
     * 入力：フットプリント `fp`、中心 `C`、半径 `R`、角 `theta`（rad）  
     * 効果：`fp` の原点（中心）を `C + R*(cosθ, sinθ)` に移動（座標系の上下向きに応じて `sinθ` 符号に注意）
-  * `orient_to_tangent(fp, theta, orientation, y_up=True)`  
+  * `orient_to_tangent(fp, theta, orientation, y_up=False)`  
     * 入力：角 `theta`、`orientation ∈ {UPPER, LOWER}`、`y_up` は座標系の上向き  
-    * 効果：接線方向に回転。一般式 `φ = θ + ( +90° if UPPER else -90° )`（`y_up=False` なら符号反転）
+    * 効果：接線方向に回転。一般式 `φ = θ + ( +90° if UPPER else -90° )`（`y_up=False` 既定）
   * `snap_corner(fp, which, target)`  
     * 入力：`which ∈ {'center_side', 'NE','NW','SE','SW'}`、`target` は座標点 or `(fpB, whichB)`  
     * 効果：指定角をターゲットに一致させる平行移動（回転は変えない）

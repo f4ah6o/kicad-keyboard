@@ -2,8 +2,12 @@
 Core API functions for Grin array keyboard layout.
 Implements the minimal API as specified in plan.md.
 """
+import math
+from itertools import combinations
+from typing import Iterable, List, Tuple, Union
+
 import numpy as np
-from typing import Tuple, Optional, Union
+
 from footprint import Footprint
 
 
@@ -11,7 +15,13 @@ from footprint import Footprint
 # Utility Functions
 # ============================================================================
 
-def circle_point(C: Tuple[float, float], R: float, theta: float) -> Tuple[float, float]:
+def circle_point(
+    C: Tuple[float, float],
+    R: float,
+    theta: float,
+    *,
+    y_up: bool = False,
+) -> Tuple[float, float]:
     """
     Calculate a point on a circle.
 
@@ -24,7 +34,7 @@ def circle_point(C: Tuple[float, float], R: float, theta: float) -> Tuple[float,
         Point (x, y) on the circle
     """
     x = C[0] + R * np.cos(theta)
-    y = C[1] + R * np.sin(theta)
+    y = C[1] + (R * np.sin(theta) if y_up else -R * np.sin(theta))
     return (x, y)
 
 
@@ -51,7 +61,14 @@ def angle_step(pitch: float, R: float) -> float:
 # Core API Functions
 # ============================================================================
 
-def place_on_arc(fp: Footprint, C: Tuple[float, float], R: float, theta: float):
+def place_on_arc(
+    fp: Footprint,
+    C: Tuple[float, float],
+    R: float,
+    theta: float,
+    *,
+    y_up: bool = False,
+):
     """
     Place a footprint on an arc at the specified angle.
 
@@ -64,11 +81,16 @@ def place_on_arc(fp: Footprint, C: Tuple[float, float], R: float, theta: float):
     Effect:
         Moves fp's origin (center) to C + R*(cos(theta), sin(theta))
     """
-    x, y = circle_point(C, R, theta)
+    x, y = circle_point(C, R, theta, y_up=y_up)
     fp.move_to(x, y)
 
 
-def orient_to_tangent(fp: Footprint, theta: float, orientation: str, y_up: bool = True):
+def orient_to_tangent(
+    fp: Footprint,
+    theta: float,
+    orientation: str,
+    y_up: bool = False,
+):
     """
     Orient a footprint tangent to an arc.
 
@@ -187,3 +209,155 @@ def snap_corner_to_center_side(
 
     # Move the footprint
     fp.move_to(fp.x + dx, fp.y + dy)
+
+
+# ============================================================================
+# Spacing / Interference Evaluation
+# ============================================================================
+
+def _ordered_corners(fp: Footprint) -> List[Tuple[float, float]]:
+    corners = fp.get_corners()
+    order = ['NW', 'NE', 'SE', 'SW']
+    return [corners[name] for name in order]
+
+
+def _edge_vectors(polygon: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
+    edges = []
+    for idx in range(len(polygon)):
+        x1, y1 = polygon[idx]
+        x2, y2 = polygon[(idx + 1) % len(polygon)]
+        edges.append((x2 - x1, y2 - y1))
+    return edges
+
+
+def _normalize(vec: Tuple[float, float]) -> Tuple[float, float]:
+    vx, vy = vec
+    length = math.hypot(vx, vy)
+    if length == 0:
+        return (0.0, 0.0)
+    return (vx / length, vy / length)
+
+
+def _project_polygon(axis: Tuple[float, float], polygon: List[Tuple[float, float]]):
+    dots = [axis[0] * px + axis[1] * py for px, py in polygon]
+    return min(dots), max(dots)
+
+
+def _sat_penetration(poly_a: List[Tuple[float, float]], poly_b: List[Tuple[float, float]]):
+    min_overlap = float('inf')
+    axes = _edge_vectors(poly_a) + _edge_vectors(poly_b)
+
+    for edge in axes:
+        axis = _normalize((-edge[1], edge[0]))
+        if axis == (0.0, 0.0):
+            continue
+
+        min_a, max_a = _project_polygon(axis, poly_a)
+        min_b, max_b = _project_polygon(axis, poly_b)
+        overlap = min(max_a, max_b) - max(min_a, min_b)
+
+        if overlap <= 0:
+            return False, 0.0
+
+        if overlap < min_overlap:
+            min_overlap = overlap
+
+    return True, min_overlap if min_overlap != float('inf') else 0.0
+
+
+def _point_segment_distance(point, seg_start, seg_end) -> float:
+    px, py = point
+    x1, y1 = seg_start
+    x2, y2 = seg_end
+    dx = x2 - x1
+    dy = y2 - y1
+    if dx == 0 and dy == 0:
+        return math.hypot(px - x1, py - y1)
+
+    t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    closest_x = x1 + t * dx
+    closest_y = y1 + t * dy
+    return math.hypot(px - closest_x, py - closest_y)
+
+
+def _polygon_min_distance(poly_a: List[Tuple[float, float]], poly_b: List[Tuple[float, float]]):
+    min_dist = float('inf')
+
+    def iter_edges(poly):
+        for idx in range(len(poly)):
+            yield poly[idx], poly[(idx + 1) % len(poly)]
+
+    for point in poly_a:
+        for seg_start, seg_end in iter_edges(poly_b):
+            min_dist = min(min_dist, _point_segment_distance(point, seg_start, seg_end))
+
+    for point in poly_b:
+        for seg_start, seg_end in iter_edges(poly_a):
+            min_dist = min(min_dist, _point_segment_distance(point, seg_start, seg_end))
+
+    return 0.0 if min_dist == float('inf') else min_dist
+
+
+def footprint_spacing(fp_a: Footprint, fp_b: Footprint):
+    """Evaluate spacing between two footprints.
+
+    Returns:
+        dict with gap (positive distance), penetration (overlap depth),
+        and status: CLEARANCE, CONTACT, or INTERFERENCE.
+    """
+
+    poly_a = _ordered_corners(fp_a)
+    poly_b = _ordered_corners(fp_b)
+
+    overlapping, penetration = _sat_penetration(poly_a, poly_b)
+    if overlapping:
+        gap = 0.0
+        status = "INTERFERENCE" if penetration > 1e-6 else "CONTACT"
+    else:
+        penetration = 0.0
+        gap = _polygon_min_distance(poly_a, poly_b)
+        status = "CONTACT" if gap <= 1e-6 else "CLEARANCE"
+
+    pair = {
+        "a": {"row": fp_a.row, "col": fp_a.col},
+        "b": {"row": fp_b.row, "col": fp_b.col},
+        "gap": float(gap),
+        "penetration": float(penetration),
+        "status": status,
+    }
+
+    return pair
+
+
+def evaluate_spacing(
+    footprints: Iterable[Footprint],
+    gap_threshold: float = 0.5,
+):
+    """Evaluate pairwise spacing for an iterable of footprints."""
+
+    fp_list = list(footprints)
+    summary = {
+        "pairs": [],
+        "interferences": [],
+        "small_gaps": [],
+        "min_gap": None,
+        "min_gap_pair": None,
+    }
+
+    for fp_a, fp_b in combinations(fp_list, 2):
+        result = footprint_spacing(fp_a, fp_b)
+        summary["pairs"].append(result)
+
+        if result["status"] == "INTERFERENCE":
+            summary["interferences"].append(result)
+        else:
+            gap = result["gap"]
+            if summary["min_gap"] is None or gap < summary["min_gap"]:
+                summary["min_gap"] = gap
+                summary["min_gap_pair"] = result
+
+            if gap <= gap_threshold:
+                summary["small_gaps"].append(result)
+
+    return summary

@@ -27,7 +27,8 @@ class GrinVisualizer:
         radii: List[float] = None,
         show_corners: bool = False,
         show_center: bool = True,
-        title: str = "Grin Array Keyboard Layout"
+        title: str = "Grin Array Keyboard Layout",
+        y_axis_up: bool = True,
     ):
         """
         Plot the keyboard layout.
@@ -39,6 +40,7 @@ class GrinVisualizer:
             show_corners: Whether to mark the corners of each key
             show_center: Whether to show the arc center
             title: Plot title
+            y_axis_up: If False, invert Y axis so larger values are shown lower
         """
         fig, ax = plt.subplots(figsize=self.figsize)
 
@@ -73,6 +75,9 @@ class GrinVisualizer:
         ax.set_ylabel('Y (mm)')
         ax.set_title(title)
         ax.grid(True, alpha=0.3)
+
+        if not y_axis_up:
+            ax.invert_yaxis()
 
         # Add legend
         from matplotlib.patches import Patch
@@ -163,7 +168,8 @@ def plot_grin_layout(
         center=simulator.center,
         radii=simulator.R,
         show_corners=show_corners,
-        title=f"Grin Array Layout ({simulator.rows}×{simulator.cols})"
+        title=f"Grin Array Layout ({simulator.rows}×{simulator.cols})",
+        y_axis_up=getattr(simulator, "y_up", True)
     )
 
     if filename:

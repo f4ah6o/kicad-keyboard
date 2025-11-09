@@ -12,13 +12,27 @@ Pythonで実装された、Grin配列キーボードレイアウトのシミュ�
 - **円弧配置**: 複数行で共通中心を共有し、下段ほど半径を小さくする
 - **角接触**: 円中心側の角どうしを基準とした配置
 - **可視化**: Matplotlibによる配置結果の可視化
+- **JSONスナップショット**: `example.py` 実行時に初期/最終レイアウトを `exports/*.json` に保存
+- **干渉評価API**: `footprint_spacing()` / `evaluate_spacing()` で干渉や間隙を数値化
 
 ## インストール
 
-必要なパッケージをインストール:
+### uv を使う場合（推奨）
+
+（リポジトリのルートで実行します）
+
+```bash
+uv sync
+uv run python simulator/example.py
+```
+
+`uv run` だけでも依存関係が自動解決され、`grin_layout_*.png` と `exports/*.json` が生成されます。
+
+### pip を使う場合
 
 ```bash
 pip install -r requirements.txt
+python example.py
 ```
 
 ## 使い方
@@ -60,6 +74,7 @@ python example.py
 - `grin_layout_custom.png` - カスタムパラメータのレイアウト
 - `grin_layout_compact.png` - コンパクトなレイアウト
 - `grin_layout_api_demo.png` - APIの直接使用例
+- `exports/*.json` - 各例の初期/最終レイアウトと干渉解析結果
 
 ## API リファレンス
 
@@ -72,14 +87,15 @@ python example.py
 - `C`: 円弧の中心座標 (Cx, Cy)
 - `R`: 半径
 - `theta`: 角度 (ラジアン)
+- `y_up` (任意引数): True で上向き正 / False で下向き正（既定）
 
-#### `orient_to_tangent(fp, theta, orientation, y_up=True)`
+#### `orient_to_tangent(fp, theta, orientation, y_up=False)`
 フットプリントを接線方向に回転します。
 
 - `fp`: Footprintオブジェクト
 - `theta`: 角度 (ラジアン)
 - `orientation`: "UPPER" または "LOWER"
-- `y_up`: Y軸の向き (デフォルト: True)
+- `y_up`: Y軸の向き (デフォルト: False、画面座標系)
 
 #### `snap_corner(fp, which, target)`
 フットプリントの角を目標位置にスナップします。
@@ -95,6 +111,20 @@ python example.py
 
 #### `circle_point(C, R, theta)`
 円周上の点の座標を計算します。
+
+- `y_up` (任意引数): True で上向き正 / False で下向き正（既定）
+
+### 間隙 / 干渉評価
+
+#### `footprint_spacing(fp_a, fp_b)`
+2つのフットプリント間の距離 (gap) と干渉量 (penetration) を返します。
+
+- `status`: `CLEARANCE`, `CONTACT`, `INTERFERENCE`
+- `gap`: 0 以上の距離 (mm)
+- `penetration`: 干渉時の最小分離量 (mm)
+
+#### `evaluate_spacing(footprints, gap_threshold=0.5)`
+複数のフットプリントを一括解析し、最小間隙や干渉ペア、閾値以下の小さな隙間をレポートします。
 
 ## データ構造
 
@@ -121,6 +151,7 @@ python example.py
 2. **角接触**: キー同士は中心側の角で接触
 3. **制約遵守**: 下側円弧は左右各2キーまで（最下段除く）
 4. **数値安定性**: `pitch/(2R) ≤ 1` を保証
+5. **スクリーン座標系**: Y軸の正方向を下向きに統一
 
 ## ファイル構成
 

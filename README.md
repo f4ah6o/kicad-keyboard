@@ -39,8 +39,10 @@ Grin配列のレイアウトをシミュレートし、可視化します。
   - `place_on_arc()` - 円弧上への配置
   - `orient_to_tangent()` - 接線方向への回転
   - `snap_corner()` - 角のスナップ
+- **間隙/干渉チェック**: `evaluate_spacing()` / `footprint_spacing()` でキー間クリアランスを解析
 - **可視化機能**: Matplotlibによる配置結果の描画
 - **柔軟なパラメータ**: 行数、列数、半径、ピッチなどをカスタマイズ可能
+- **JSONスナップショット**: `simulator/exports/*.json` に初期/最終レイアウトを自動出力
 
 詳細は [simulator/README.md](simulator/README.md) を参照してください。
 
@@ -52,7 +54,8 @@ Grin配列の詳細な設計仕様とアルゴリズムは [docs/plan.md](docs/p
 
 ### 必要要件
 
-- Python 3.7以上
+- Python 3.10以上
+- [uv](https://github.com/astral-sh/uv) 0.9 以降（推奨）
 - KiCad (将来的な統合用)
 
 ### インストールと使用
@@ -64,20 +67,25 @@ git clone https://github.com/f4ah6o/kicad-keyboard.git
 cd kicad-keyboard
 ```
 
-2. **依存パッケージのインストール**
+2. **依存パッケージのインストールとサンプル実行 (uv推奨)**
+
+uv は `pyproject.toml` / `uv.lock` に記述された依存関係を自動で解決します。
+
+```bash
+# ルートディレクトリで実行
+uv sync                 # 初回のみ。 .venv が作成される
+uv run python simulator/example.py
+```
+
+`uv sync` を省略しても `uv run` 時に自動で依存関係が解決されます。`grin_layout_*.png` と `simulator/exports/*.json` が生成されれば成功です。
+
+3. **pip を使う場合の代替手順**
 
 ```bash
 cd simulator
 pip install -r requirements.txt
-```
-
-3. **サンプルの実行**
-
-```bash
 python example.py
 ```
-
-これにより、複数のレイアウト例が可視化され、PNGファイルとして出力されます。
 
 ### 基本的な使い方
 
@@ -110,6 +118,7 @@ plot_grin_layout(sim, filename="my_layout.png")
 2. **数値安定性**: `pitch/(2R) ≤ 1` を保証し、三角関数の定義域を確保
 3. **角接触**: キー同士の配置は中心側の角で接触させる一貫した方式
 4. **制約遵守**: 下側円弧は左右各2キーまで（最下段除く）
+5. **スクリーン座標系**: Y軸の正方向を下向きにし、下段ほど Y が大きくなるよう統一
 
 ## ライセンス
 

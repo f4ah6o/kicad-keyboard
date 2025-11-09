@@ -13,6 +13,8 @@ from .api import (
     snap_corner_to_center_side,
     angle_step,
     circle_point,
+    footprint_spacing,
+    evaluate_spacing,
 )
 from .grin_simulator import GrinSimulator, Section, SectionType
 from .visualizer import GrinVisualizer, plot_grin_layout
@@ -31,6 +33,8 @@ __all__ = [
     "snap_corner_to_center_side",
     "angle_step",
     "circle_point",
+    "footprint_spacing",
+    "evaluate_spacing",
     # Simulator
     "GrinSimulator",
     # Visualization

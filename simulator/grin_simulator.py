@@ -3,7 +3,7 @@ Grin Array Keyboard Layout Simulator.
 Implements the workflow described in plan.md.
 """
 import numpy as np
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict
 from dataclasses import dataclass
 from enum import Enum
 
@@ -13,7 +13,8 @@ from api import (
     orient_to_tangent,
     snap_corner_to_center_side,
     angle_step,
-    circle_point
+    circle_point,
+    evaluate_spacing,
 )
 
 
@@ -47,6 +48,7 @@ class GrinSimulator:
         base_radius: float = 150.0,
         radius_step: float = 20.0,
         base_pitch: float = 19.05,
+        y_up: bool = False,
     ):
         """
         Initialize the Grin simulator.
@@ -58,6 +60,7 @@ class GrinSimulator:
             base_radius: Radius for the top row
             radius_step: Radius decrease per row (bottom rows have smaller radius)
             base_pitch: Key pitch (center-to-center distance)
+            y_up: Whether the positive Y axis points upward (default False for screen coords)
         """
         self.rows = rows
         self.cols = cols
@@ -65,6 +68,7 @@ class GrinSimulator:
         self.base_radius = base_radius
         self.radius_step = radius_step
         self.base_pitch = base_pitch
+        self.y_up = y_up
 
         # Calculate radius and pitch for each row
         # Top row (row 0) has largest radius, bottom row has smallest
@@ -195,7 +199,7 @@ class GrinSimulator:
         """
         # For horizontal sections, place keys in a straight line
         # Start from the arc position and continue horizontally
-        start_pos = circle_point(self.center, self.R[r], base_angle)
+        start_pos = circle_point(self.center, self.R[r], base_angle, y_up=self.y_up)
 
         for i, c in enumerate(sec.cols):
             fp = self.footprints[r][c]
@@ -221,10 +225,10 @@ class GrinSimulator:
             fp = self.footprints[r][c]
 
             # Step 1: Place on arc
-            place_on_arc(fp, self.center, self.R[r], theta)
+            place_on_arc(fp, self.center, self.R[r], theta, y_up=self.y_up)
 
             # Step 2: Orient to tangent
-            orient_to_tangent(fp, theta, sec.type.value, y_up=True)
+            orient_to_tangent(fp, theta, sec.type.value, y_up=self.y_up)
 
             # Step 3: Snap corner to previous key (corner contact)
             if prev_fp is not None:
@@ -258,6 +262,10 @@ class GrinSimulator:
         for row in self.footprints:
             result.extend(row)
         return result
+
+    def evaluate_spacing(self, gap_threshold: float = 0.5):
+        """Convenience wrapper for spacing analysis across the layout."""
+        return evaluate_spacing(self.get_all_footprints(), gap_threshold=gap_threshold)
 
     def print_layout_summary(self):
         """Print a summary of the layout."""

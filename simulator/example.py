@@ -2,10 +2,67 @@
 """
 Example usage of the Grin Array Keyboard Simulator.
 """
+import json
 import sys
+from pathlib import Path
+
 import numpy as np
+
 from grin_simulator import GrinSimulator
 from visualizer import plot_grin_layout
+
+EXPORT_DIR = Path(__file__).parent / "exports"
+EXPORT_DIR.mkdir(exist_ok=True)
+DEFAULT_GAP_THRESHOLD = 0.5  # millimeters
+
+
+def _footprint_snapshot(sim):
+    data = []
+    for fp in sim.get_all_footprints():
+        data.append({
+            "row": fp.row,
+            "col": fp.col,
+            "x": float(fp.x),
+            "y": float(fp.y),
+            "rotation_deg": float(np.degrees(fp.rotation)),
+            "width": float(fp.width),
+            "height": float(fp.height),
+        })
+    return data
+
+
+def save_layout_snapshot(sim, example_name: str, stage: str, spacing: dict | None = None):
+    payload = {
+        "example": example_name,
+        "stage": stage,
+        "config": {
+            "rows": sim.rows,
+            "cols": sim.cols,
+            "center": {
+                "x": float(sim.center[0]),
+                "y": float(sim.center[1]),
+            },
+            "base_radius": float(sim.base_radius),
+            "radius_step": float(sim.radius_step),
+            "base_pitch": float(sim.base_pitch),
+            "y_up": bool(sim.y_up),
+        },
+        "footprints": _footprint_snapshot(sim),
+    }
+
+    if spacing is not None:
+        payload["spacing"] = spacing
+
+    export_path = EXPORT_DIR / f"{example_name}_{stage}.json"
+    export_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    print(f"Layout snapshot saved: {export_path}")
+
+
+def print_spacing_summary(example_name: str, spacing: dict):
+    print(f"Spacing summary for {example_name}:")
+    print(f"  Min gap: {spacing['min_gap'] if spacing['min_gap'] is not None else 'n/a'} mm")
+    print(f"  Interferences: {len(spacing['interferences'])}")
+    print(f"  Small gaps (≤{DEFAULT_GAP_THRESHOLD} mm): {len(spacing['small_gaps'])}")
 
 
 def example_basic():
@@ -21,8 +78,11 @@ def example_basic():
         center=(150.0, 150.0),
         base_radius=120.0,
         radius_step=15.0,
-        base_pitch=19.05
+        base_pitch=19.05,
+        y_up=False,
     )
+
+    save_layout_snapshot(sim, "basic", "initial")
 
     # Perform layout
     sim.layout()
@@ -36,6 +96,10 @@ def example_basic():
         for c in range(min(5, sim.cols)):
             fp = sim.footprints[r][c]
             print(f"  {fp}")
+
+    spacing = sim.evaluate_spacing(DEFAULT_GAP_THRESHOLD)
+    print_spacing_summary("Basic", spacing)
+    save_layout_snapshot(sim, "basic", "final", spacing=spacing)
 
     # Visualize
     plot_grin_layout(sim, filename="grin_layout_basic.png", show=False)
@@ -56,14 +120,21 @@ def example_custom():
         center=(200.0, 200.0),
         base_radius=150.0,
         radius_step=20.0,
-        base_pitch=19.05
+        base_pitch=19.05,
+        y_up=False,
     )
+
+    save_layout_snapshot(sim, "custom", "initial")
 
     # Perform layout
     sim.layout()
 
     # Print summary
     sim.print_layout_summary()
+
+    spacing = sim.evaluate_spacing(DEFAULT_GAP_THRESHOLD)
+    print_spacing_summary("Custom", spacing)
+    save_layout_snapshot(sim, "custom", "final", spacing=spacing)
 
     # Visualize
     plot_grin_layout(sim, filename="grin_layout_custom.png", show=False)
@@ -84,14 +155,21 @@ def example_compact():
         center=(100.0, 100.0),
         base_radius=80.0,
         radius_step=12.0,
-        base_pitch=19.05
+        base_pitch=19.05,
+        y_up=False,
     )
+
+    save_layout_snapshot(sim, "compact", "initial")
 
     # Perform layout
     sim.layout()
 
     # Print summary
     sim.print_layout_summary()
+
+    spacing = sim.evaluate_spacing(DEFAULT_GAP_THRESHOLD)
+    print_spacing_summary("Compact", spacing)
+    save_layout_snapshot(sim, "compact", "final", spacing=spacing)
 
     # Visualize with corners shown
     plot_grin_layout(
@@ -130,10 +208,10 @@ def example_api_demo():
     theta = -np.pi / 4  # Start at -45 degrees
     for i, fp in enumerate(footprints):
         # Place on arc
-        place_on_arc(fp, center, radius, theta)
+        place_on_arc(fp, center, radius, theta, y_up=False)
 
         # Orient to tangent
-        orient_to_tangent(fp, theta, "UPPER", y_up=True)
+        orient_to_tangent(fp, theta, "UPPER", y_up=False)
 
         print(f"  Footprint {i}: pos=({fp.x:.2f}, {fp.y:.2f}), rot={np.degrees(fp.rotation):.1f}°")
 
@@ -147,7 +225,8 @@ def example_api_demo():
         center=center,
         radii=[radius],
         show_corners=True,
-        title="Direct API Usage - Upper Arc"
+        title="Direct API Usage - Upper Arc",
+        y_axis_up=False,
     )
     vis.save_plot("grin_layout_api_demo.png")
 
