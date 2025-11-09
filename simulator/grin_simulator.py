@@ -81,7 +81,11 @@ class GrinSimulator:
 
         # Calculate radius and pitch for each row
         # Top row (row 0) has largest radius, bottom row has smallest
-        self.R = [base_radius - r * radius_step for r in range(rows)]
+        # For arc layouts, we need three reference circles:
+        # - R_center: circle through key centers (for angle calculation)
+        # - R_inner: circle through inner edges (closest to center)
+        # - R_outer: circle through outer edges (farthest from center)
+        self.R_center = [base_radius - r * radius_step for r in range(rows)]
         self.P = [base_pitch for _ in range(rows)]  # Same pitch for all rows
 
         # Create footprints
@@ -92,6 +96,23 @@ class GrinSimulator:
                 fp = Footprint(row=r, col=c)
                 row_fps.append(fp)
             self.footprints.append(row_fps)
+
+        # Calculate inner and outer radii based on key height (radial dimension)
+        # Assuming keys are oriented tangent to the arc, height is the radial dimension
+        self.R_inner = []
+        self.R_outer = []
+        for r in range(rows):
+            # Get key height from first footprint in the row
+            if len(self.footprints[r]) > 0:
+                key_height = self.footprints[r][0].height
+            else:
+                key_height = 19.05  # Default 1U key height
+
+            self.R_inner.append(self.R_center[r] - key_height / 2)
+            self.R_outer.append(self.R_center[r] + key_height / 2)
+
+        # Keep R as alias for R_center for backward compatibility
+        self.R = self.R_center
 
         # Section definitions (will be computed)
         self.sections: List[List[Section]] = []
@@ -239,8 +260,16 @@ class GrinSimulator:
         for c in sec.cols:
             fp = self.footprints[r][c]
 
-            # Step 1: Place on arc
-            place_on_arc(fp, self.center, self.R[r], theta, y_up=self.y_up)
+            # Step 1: Place on arc with three reference circles
+            place_on_arc(
+                fp,
+                self.center,
+                self.R_center[r],
+                theta,
+                R_inner=self.R_inner[r],
+                R_outer=self.R_outer[r],
+                y_up=self.y_up
+            )
 
             # Step 2: Orient to tangent
             orient_to_tangent(fp, theta, sec.type.value, y_up=self.y_up)
@@ -295,7 +324,7 @@ class GrinSimulator:
         print()
 
         for r in range(self.rows):
-            print(f"Row {r}: R={self.R[r]:.2f}mm")
+            print(f"Row {r}: R_center={self.R_center[r]:.2f}mm, R_inner={self.R_inner[r]:.2f}mm, R_outer={self.R_outer[r]:.2f}mm")
             for sec in self.sections[r]:
                 print(f"  {sec.type.value:12s} cols {sec.cols[0]:2d}-{sec.cols[-1]:2d} ({len(sec.cols)} keys)")
 
