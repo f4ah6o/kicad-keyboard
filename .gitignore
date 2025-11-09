@@ -4,3 +4,8 @@ __pycache__/
 /grin_layout_*.png
 simulator/grin_layout_*.png
 simulator/exports/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
