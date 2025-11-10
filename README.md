@@ -36,7 +36,10 @@ kicad-keyboard/
 Grin配列のレイアウトをシミュレートし、可視化します。
 
 - **最小API設計**: 3つのコア関数で実装
-  - `place_on_arc()` - 円弧上への配置
+  - `place_on_arc()` - 円弧上への配置（3つの基準円に対応）
+    - R_center: キーの中心を通る円
+    - R_inner: キーの内側の端を通る円
+    - R_outer: キーの外側の端を通る円
   - `orient_to_tangent()` - 接線方向への回転
   - `snap_corner()` - 角のスナップ
 - **間隙/干渉チェック**: `evaluate_spacing()` / `footprint_spacing()` でキー間クリアランスを解析

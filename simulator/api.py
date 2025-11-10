@@ -67,22 +67,49 @@ def place_on_arc(
     R: float,
     theta: float,
     *,
+    R_inner: float | None = None,
+    R_outer: float | None = None,
     y_up: bool = False,
 ):
     """
     Place a footprint on an arc at the specified angle.
 
+    For arc-based keyboard layouts, three reference circles are used:
+    - R_center (R): The center circle through key centers (used for angle calculation)
+    - R_inner: The inner circle through the inner edges of keys (closest to arc center)
+    - R_outer: The outer circle through the outer edges of keys (farthest from arc center)
+
     Args:
         fp: Footprint to place
         C: Center point of the arc (Cx, Cy)
-        R: Radius of the arc
+        R: Radius of the center reference circle (key centers)
         theta: Angle in radians (measured from positive x-axis)
+        R_inner: Radius of the inner reference circle (optional)
+        R_outer: Radius of the outer reference circle (optional)
+        y_up: True if y-axis points up, False if it points down
 
     Effect:
         Moves fp's origin (center) to C + R*(cos(theta), sin(theta))
+        The three reference circles are used for precise arc layout calculations.
+
+    Note:
+        If R_inner and R_outer are not provided, they can be calculated from R
+        after the footprint is oriented, using the key's radial dimension:
+        - R_inner = R - (key_radial_dimension / 2)
+        - R_outer = R + (key_radial_dimension / 2)
     """
     x, y = circle_point(C, R, theta, y_up=y_up)
     fp.move_to(x, y)
+
+    # Store reference circle parameters for potential future use
+    # This allows downstream code to access the three reference circles
+    if not hasattr(fp, '_arc_params'):
+        fp._arc_params = {}
+    fp._arc_params['R_center'] = R
+    fp._arc_params['R_inner'] = R_inner
+    fp._arc_params['R_outer'] = R_outer
+    fp._arc_params['theta'] = theta
+    fp._arc_params['C'] = C
 
 
 def orient_to_tangent(

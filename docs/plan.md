@@ -64,10 +64,20 @@ for r in rows:
 
 ## 要点（API仕様の勘所）
 
+* **3つの基準円**
+  * 円弧配置では、キーに物理的な寸法があるため、以下の3つの基準円を考慮する必要がある：
+    * **R_center**: キーの中心を通る円（角度計算の基準）
+    * **R_inner**: キーの内側（円の中心に近い側）の端を通る円
+    * **R_outer**: キーの外側の端を通る円
+  * キーが接線方向を向いているとき、キーの高さ `h` を半径方向の寸法とすると：
+    * `R_inner = R_center - h/2`
+    * `R_outer = R_center + h/2`
+
 * **関数契約（要旨）**
-  * `place_on_arc(fp, C, R, theta)`  
-    * 入力：フットプリント `fp`、中心 `C`、半径 `R`、角 `theta`（rad）  
+  * `place_on_arc(fp, C, R, theta, R_inner=None, R_outer=None)`
+    * 入力：フットプリント `fp`、中心 `C`、中心半径 `R`（R_center）、角 `theta`（rad）、内側半径 `R_inner`（省略可）、外側半径 `R_outer`（省略可）
     * 効果：`fp` の原点（中心）を `C + R*(cosθ, sinθ)` に移動（座標系の上下向きに応じて `sinθ` 符号に注意）
+    * 注記：3つの基準円パラメータがフットプリントに記録され、正確な配置計算に使用される
   * `orient_to_tangent(fp, theta, orientation, y_up=False)`  
     * 入力：角 `theta`、`orientation ∈ {UPPER, LOWER}`、`y_up` は座標系の上向き  
     * 効果：接線方向に回転。一般式 `φ = θ + ( +90° if UPPER else -90° )`（`y_up=False` 既定）

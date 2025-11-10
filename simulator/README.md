@@ -91,14 +91,22 @@ python example.py
 
 ### コア関数
 
-#### `place_on_arc(fp, C, R, theta)`
+#### `place_on_arc(fp, C, R, theta, R_inner=None, R_outer=None, y_up=False)`
 フットプリントを円弧上に配置します。
 
+円弧配置には3つの基準円があります：
+- **R_center (R)**: キーの中心を通る円（角度計算の基準）
+- **R_inner**: キーの内側（円の中心に近い側）の端を通る円
+- **R_outer**: キーの外側の端を通る円
+
+パラメータ：
 - `fp`: Footprintオブジェクト
 - `C`: 円弧の中心座標 (Cx, Cy)
-- `R`: 半径
+- `R`: 中心基準円の半径（R_center）
 - `theta`: 角度 (ラジアン)
-- `y_up` (任意引数): True で上向き正 / False で下向き正（既定）
+- `R_inner`: 内側基準円の半径（省略可）
+- `R_outer`: 外側基準円の半径（省略可）
+- `y_up`: Y軸の向き（True: 上向き、False: 下向き、既定値: False）
 
 #### `orient_to_tangent(fp, theta, orientation, y_up=False)`
 フットプリントを接線方向に回転します。

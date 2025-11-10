@@ -35,21 +35,32 @@ def _footprint_snapshot(sim):
 
 
 def save_layout_snapshot(sim, example_name: str, stage: str, spacing: dict | None = None):
+    config = {
+        "rows": sim.rows,
+        "cols": sim.cols,
+        "radius_step": float(sim.radius_step),
+        "base_pitch": float(sim.base_pitch),
+        "y_up": bool(sim.y_up),
+    }
+
+    # Add three-center mode configuration if applicable
+    if hasattr(sim, 'three_center_mode') and sim.three_center_mode:
+        config["mode"] = "three_center"
+        config["C_lower1"] = {"x": float(sim.C_lower1[0]), "y": float(sim.C_lower1[1])}
+        config["C_upper"] = {"x": float(sim.C_upper[0]), "y": float(sim.C_upper[1])}
+        config["C_lower2"] = {"x": float(sim.C_lower2[0]), "y": float(sim.C_lower2[1])}
+        config["R_lower1_base"] = float(sim.R_lower1_base)
+        config["R_upper_base"] = float(sim.R_upper_base)
+        config["R_lower2_base"] = float(sim.R_lower2_base)
+    else:
+        config["mode"] = "single_center"
+        config["center"] = {"x": float(sim.center[0]), "y": float(sim.center[1])}
+        config["base_radius"] = float(sim.base_radius)
+
     payload = {
         "example": example_name,
         "stage": stage,
-        "config": {
-            "rows": sim.rows,
-            "cols": sim.cols,
-            "center": {
-                "x": float(sim.center[0]),
-                "y": float(sim.center[1]),
-            },
-            "base_radius": float(sim.base_radius),
-            "radius_step": float(sim.radius_step),
-            "base_pitch": float(sim.base_pitch),
-            "y_up": bool(sim.y_up),
-        },
+        "config": config,
         "footprints": _footprint_snapshot(sim),
     }
 
@@ -216,10 +227,65 @@ def example_compact():
     return sim
 
 
+def example_three_center():
+    """Three-center mode example with separate centers for lower and upper arcs."""
+    print("\n" + "=" * 60)
+    print("Example 4: Three-Center Mode")
+    print("=" * 60)
+
+    # Create simulator with three separate centers
+    # C_lower1 and C_lower2 are the same (as R_lower1 = R_lower2)
+    # but we can position them differently for asymmetric layouts
+    sim = GrinSimulator(
+        rows=4,
+        cols=11,
+        # Legacy parameters (used as fallback)
+        center=(150.0, 150.0),
+        base_radius=120.0,
+        # Three-center mode parameters
+        C_lower1=(140.0, 150.0),  # Left lower arc center
+        C_upper=(150.0, 150.0),   # Upper arc center
+        C_lower2=(160.0, 150.0),  # Right lower arc center
+        R_lower1_base=100.0,      # Radius for left lower arc
+        R_upper_base=120.0,       # Radius for upper arc
+        R_lower2_base=100.0,      # Radius for right lower arc (= R_lower1_base)
+        radius_step=15.0,
+        base_pitch=19.05,
+        y_up=False,
+        cols_per_row=[11, 10, 10, 4],
+    )
+
+    initialize_from_kle(sim)
+    save_layout_snapshot(sim, "three_center", "initial")
+    export_layout_png(sim, "three_center", "initial")
+
+    # Perform layout
+    sim.layout()
+
+    # Print summary
+    sim.print_layout_summary()
+
+    # Print some footprint positions
+    print("Sample footprint positions:")
+    for r in range(min(2, sim.rows)):
+        for c in range(min(5, sim.cols)):
+            fp = sim.footprints[r][c]
+            print(f"  {fp}")
+
+    spacing = sim.evaluate_spacing(DEFAULT_GAP_THRESHOLD)
+    print_spacing_summary("Three-Center", spacing)
+    save_layout_snapshot(sim, "three_center", "final", spacing=spacing)
+
+    # Visualize
+    export_layout_png(sim, "three_center", "final", filename="grin_layout_three_center.png")
+
+    return sim
+
+
 def example_api_demo():
     """Demonstrate the core API functions directly."""
     print("\n" + "=" * 60)
-    print("Example 4: Direct API Usage")
+    print("Example 5: Direct API Usage")
     print("=" * 60)
 
     from footprint import Footprint
@@ -278,6 +344,7 @@ def main():
         example_basic()
         example_custom()
         example_compact()
+        example_three_center()
         example_api_demo()
 
         print("\n" + "=" * 60)
