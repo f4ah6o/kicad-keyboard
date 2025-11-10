@@ -9,3 +9,6 @@ simulator/exports/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Test outputs
+test-outputs/
