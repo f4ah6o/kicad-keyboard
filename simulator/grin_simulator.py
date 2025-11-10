@@ -31,6 +31,8 @@ class Section:
     type: SectionType
     cols: List[int]  # Column indices in this section
     theta0: float = 0.0  # Starting angle for arc sections
+    center: Tuple[float, float] | None = None  # Center point for this section
+    radius_base: float | None = None  # Base radius for this section
 
 
 class GrinSimulator:
@@ -50,6 +52,13 @@ class GrinSimulator:
         base_pitch: float = 19.05,
         y_up: bool = False,
         cols_per_row: List[int] | None = None,
+        # Three-center configuration (optional)
+        C_lower1: Tuple[float, float] | None = None,
+        C_upper: Tuple[float, float] | None = None,
+        C_lower2: Tuple[float, float] | None = None,
+        R_lower1_base: float | None = None,
+        R_upper_base: float | None = None,
+        R_lower2_base: float | None = None,
     ):
         """
         Initialize the Grin simulator.
@@ -57,12 +66,18 @@ class GrinSimulator:
         Args:
             rows: Number of rows
             cols: Number of columns
-            center: Common center point (Cx, Cy) for all arcs
-            base_radius: Radius for the top row
+            center: Common center point (Cx, Cy) for all arcs (legacy mode)
+            base_radius: Radius for the top row (legacy mode)
             radius_step: Radius decrease per row (bottom rows have smaller radius)
             base_pitch: Key pitch (center-to-center distance)
             y_up: Whether the positive Y axis points upward (default False for screen coords)
             cols_per_row: Optional explicit column counts per row (default: uniform)
+            C_lower1: Center for left lower arc sections (three-center mode)
+            C_upper: Center for upper arc sections (three-center mode)
+            C_lower2: Center for right lower arc sections (three-center mode)
+            R_lower1_base: Base radius for left lower arcs (three-center mode)
+            R_upper_base: Base radius for upper arcs (three-center mode)
+            R_lower2_base: Base radius for right lower arcs (three-center mode, typically = R_lower1_base)
         """
         self.rows = rows
         if cols_per_row is not None:
@@ -73,8 +88,32 @@ class GrinSimulator:
         else:
             self.cols = cols
             self.cols_per_row = [cols for _ in range(rows)]
-        self.center = center
-        self.base_radius = base_radius
+
+        # Determine if using three-center mode
+        self.three_center_mode = C_lower1 is not None and C_upper is not None and C_lower2 is not None
+
+        if self.three_center_mode:
+            # Three-center mode: each arc section has its own center
+            self.C_lower1 = C_lower1
+            self.C_upper = C_upper
+            self.C_lower2 = C_lower2
+            self.R_lower1_base = R_lower1_base if R_lower1_base is not None else base_radius
+            self.R_upper_base = R_upper_base if R_upper_base is not None else base_radius
+            self.R_lower2_base = R_lower2_base if R_lower2_base is not None else self.R_lower1_base
+            # Keep legacy fields for compatibility
+            self.center = center
+            self.base_radius = base_radius
+        else:
+            # Legacy mode: single center for all arcs
+            self.center = center
+            self.base_radius = base_radius
+            self.C_lower1 = center
+            self.C_upper = center
+            self.C_lower2 = center
+            self.R_lower1_base = base_radius
+            self.R_upper_base = base_radius
+            self.R_lower2_base = base_radius
+
         self.radius_step = radius_step
         self.base_pitch = base_pitch
         self.y_up = y_up
@@ -85,7 +124,17 @@ class GrinSimulator:
         # - R_center: circle through key centers (for angle calculation)
         # - R_inner: circle through inner edges (closest to center)
         # - R_outer: circle through outer edges (farthest from center)
-        self.R_center = [base_radius - r * radius_step for r in range(rows)]
+
+        # In three-center mode, we have different base radii for different sections
+        # Store radii per row per section type
+        self.R_center_lower1 = [self.R_lower1_base - r * radius_step for r in range(rows)]
+        self.R_center_upper = [self.R_upper_base - r * radius_step for r in range(rows)]
+        self.R_center_lower2 = [self.R_lower2_base - r * radius_step for r in range(rows)]
+
+        # Legacy: use upper arc radii as default
+        self.R_center = self.R_center_upper
+        self.R = self.R_center
+
         self.P = [base_pitch for _ in range(rows)]  # Same pitch for all rows
 
         # Create footprints
@@ -99,8 +148,14 @@ class GrinSimulator:
 
         # Calculate inner and outer radii based on key height (radial dimension)
         # Assuming keys are oriented tangent to the arc, height is the radial dimension
-        self.R_inner = []
-        self.R_outer = []
+        # In three-center mode, these are calculated per section type
+        self.R_inner_lower1 = []
+        self.R_outer_lower1 = []
+        self.R_inner_upper = []
+        self.R_outer_upper = []
+        self.R_inner_lower2 = []
+        self.R_outer_lower2 = []
+
         for r in range(rows):
             # Get key height from first footprint in the row
             if len(self.footprints[r]) > 0:
@@ -108,11 +163,16 @@ class GrinSimulator:
             else:
                 key_height = 19.05  # Default 1U key height
 
-            self.R_inner.append(self.R_center[r] - key_height / 2)
-            self.R_outer.append(self.R_center[r] + key_height / 2)
+            self.R_inner_lower1.append(self.R_center_lower1[r] - key_height / 2)
+            self.R_outer_lower1.append(self.R_center_lower1[r] + key_height / 2)
+            self.R_inner_upper.append(self.R_center_upper[r] - key_height / 2)
+            self.R_outer_upper.append(self.R_center_upper[r] + key_height / 2)
+            self.R_inner_lower2.append(self.R_center_lower2[r] - key_height / 2)
+            self.R_outer_lower2.append(self.R_center_lower2[r] + key_height / 2)
 
-        # Keep R as alias for R_center for backward compatibility
-        self.R = self.R_center
+        # Legacy: use upper arc radii as default
+        self.R_inner = self.R_inner_upper
+        self.R_outer = self.R_outer_upper
 
         # Section definitions (will be computed)
         self.sections: List[List[Section]] = []
@@ -170,10 +230,36 @@ class GrinSimulator:
 
             # Create sections with column indices
             col_idx = 0
+            lower_arc_count = 0  # Track which lower arc section this is (left=0, right=1)
             for sec_type, count in sections_def:
                 if count > 0:
                     cols_in_section = list(range(col_idx, col_idx + count))
-                    row_sections.append(Section(type=sec_type, cols=cols_in_section))
+
+                    # Assign center and radius based on section type
+                    if sec_type == SectionType.LOWER_ARC:
+                        if lower_arc_count == 0:
+                            # Left lower arc
+                            center = self.C_lower1
+                            radius_base = self.R_lower1_base
+                        else:
+                            # Right lower arc
+                            center = self.C_lower2
+                            radius_base = self.R_lower2_base
+                        lower_arc_count += 1
+                    elif sec_type == SectionType.UPPER_ARC:
+                        center = self.C_upper
+                        radius_base = self.R_upper_base
+                    else:
+                        # Horizontal sections don't use arc parameters
+                        center = None
+                        radius_base = None
+
+                    row_sections.append(Section(
+                        type=sec_type,
+                        cols=cols_in_section,
+                        center=center,
+                        radius_base=radius_base
+                    ))
                     col_idx += count
 
             sections.append(row_sections)
@@ -254,6 +340,25 @@ class GrinSimulator:
             sec: Section to place
             d_theta: Angular step
         """
+        # Get section-specific center and radii
+        section_center = sec.center if sec.center is not None else self.center
+
+        # Determine which radius arrays to use based on section type
+        if sec.type == SectionType.LOWER_ARC:
+            # Check if this is left or right lower arc based on the center
+            if section_center == self.C_lower1:
+                R_center = self.R_center_lower1[r]
+                R_inner = self.R_inner_lower1[r]
+                R_outer = self.R_outer_lower1[r]
+            else:  # C_lower2
+                R_center = self.R_center_lower2[r]
+                R_inner = self.R_inner_lower2[r]
+                R_outer = self.R_outer_lower2[r]
+        else:  # UPPER_ARC
+            R_center = self.R_center_upper[r]
+            R_inner = self.R_inner_upper[r]
+            R_outer = self.R_outer_upper[r]
+
         theta = sec.theta0
         prev_fp = None
 
@@ -263,11 +368,11 @@ class GrinSimulator:
             # Step 1: Place on arc with three reference circles
             place_on_arc(
                 fp,
-                self.center,
-                self.R_center[r],
+                section_center,
+                R_center,
                 theta,
-                R_inner=self.R_inner[r],
-                R_outer=self.R_outer[r],
+                R_inner=R_inner,
+                R_outer=R_outer,
                 y_up=self.y_up
             )
 
@@ -279,8 +384,8 @@ class GrinSimulator:
                 try:
                     snap_corner_to_center_side(
                         fp,
-                        target=(prev_fp, self.center),
-                        center=self.center
+                        target=(prev_fp, section_center),
+                        center=section_center
                     )
                 except Exception as e:
                     print(f"Warning: Failed to snap corner for r{r}c{c}: {e}")
@@ -318,14 +423,46 @@ class GrinSimulator:
         print(f"{'='*60}")
         print(f"Rows: {self.rows}, Max Cols: {self.cols}")
         print(f"Cols per row: {', '.join(str(len(row)) for row in self.footprints)}")
-        print(f"Center: {self.center}")
-        print(f"Base Radius: {self.base_radius}, Step: {self.radius_step}")
-        print(f"Base Pitch: {self.base_pitch}")
+
+        if self.three_center_mode:
+            print(f"Mode: Three-center")
+            print(f"C_lower1: {self.C_lower1}, R_lower1_base: {self.R_lower1_base:.2f}mm")
+            print(f"C_upper:  {self.C_upper}, R_upper_base:  {self.R_upper_base:.2f}mm")
+            print(f"C_lower2: {self.C_lower2}, R_lower2_base: {self.R_lower2_base:.2f}mm")
+        else:
+            print(f"Mode: Single-center (legacy)")
+            print(f"Center: {self.center}")
+            print(f"Base Radius: {self.base_radius:.2f}mm")
+
+        print(f"Radius Step: {self.radius_step:.2f}mm")
+        print(f"Base Pitch: {self.base_pitch:.2f}mm")
         print()
 
         for r in range(self.rows):
-            print(f"Row {r}: R_center={self.R_center[r]:.2f}mm, R_inner={self.R_inner[r]:.2f}mm, R_outer={self.R_outer[r]:.2f}mm")
+            print(f"Row {r}:")
             for sec in self.sections[r]:
-                print(f"  {sec.type.value:12s} cols {sec.cols[0]:2d}-{sec.cols[-1]:2d} ({len(sec.cols)} keys)")
+                if sec.type == SectionType.HORIZONTAL:
+                    print(f"  {sec.type.value:12s} cols {sec.cols[0]:2d}-{sec.cols[-1]:2d} ({len(sec.cols)} keys)")
+                else:
+                    # Determine which radius set to use
+                    if sec.type == SectionType.LOWER_ARC:
+                        if sec.center == self.C_lower1:
+                            R_c = self.R_center_lower1[r]
+                            R_i = self.R_inner_lower1[r]
+                            R_o = self.R_outer_lower1[r]
+                            label = "LOWER_L"
+                        else:
+                            R_c = self.R_center_lower2[r]
+                            R_i = self.R_inner_lower2[r]
+                            R_o = self.R_outer_lower2[r]
+                            label = "LOWER_R"
+                    else:  # UPPER_ARC
+                        R_c = self.R_center_upper[r]
+                        R_i = self.R_inner_upper[r]
+                        R_o = self.R_outer_upper[r]
+                        label = "UPPER"
+
+                    print(f"  {label:12s} cols {sec.cols[0]:2d}-{sec.cols[-1]:2d} ({len(sec.cols)} keys) "
+                          f"R_c={R_c:.2f}mm, R_i={R_i:.2f}mm, R_o={R_o:.2f}mm")
 
         print(f"{'='*60}\n")
