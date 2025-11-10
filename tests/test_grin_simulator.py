@@ -157,7 +157,7 @@ class TestGrinSimulator:
         # Test case 1: Basic layout
         sim1 = GrinSimulator(rows=3, cols=10)
         sim1.layout()
-        output_file1 = os.path.join(output_dir, "grin_layout_basic.png")
+        output_file1 = os.path.join(output_dir, "grin_layout_01_basic.png")
         fig1, ax1 = plot_grin_layout(sim1, filename=output_file1, show=False)
         assert os.path.exists(output_file1)
         plt.close(fig1)
@@ -174,7 +174,7 @@ class TestGrinSimulator:
             R_lower2_base=150.0
         )
         sim2.layout()
-        output_file2 = os.path.join(output_dir, "grin_layout_three_center.png")
+        output_file2 = os.path.join(output_dir, "grin_layout_02_three_center.png")
         fig2, ax2 = plot_grin_layout(sim2, filename=output_file2, show=False)
         assert os.path.exists(output_file2)
         plt.close(fig2)
@@ -188,7 +188,85 @@ class TestGrinSimulator:
             base_pitch=20.0
         )
         sim3.layout()
-        output_file3 = os.path.join(output_dir, "grin_layout_custom.png")
+        output_file3 = os.path.join(output_dir, "grin_layout_03_custom.png")
         fig3, ax3 = plot_grin_layout(sim3, filename=output_file3, show=False)
         assert os.path.exists(output_file3)
         plt.close(fig3)
+
+        # Test case 4: Small layout
+        sim4 = GrinSimulator(rows=2, cols=5, base_radius=100.0)
+        sim4.layout()
+        output_file4 = os.path.join(output_dir, "grin_layout_04_small.png")
+        fig4, ax4 = plot_grin_layout(sim4, filename=output_file4, show=False)
+        assert os.path.exists(output_file4)
+        plt.close(fig4)
+
+        # Test case 5: Large layout
+        sim5 = GrinSimulator(rows=5, cols=15, base_radius=200.0, radius_step=20.0)
+        sim5.layout()
+        output_file5 = os.path.join(output_dir, "grin_layout_05_large.png")
+        fig5, ax5 = plot_grin_layout(sim5, filename=output_file5, show=False)
+        assert os.path.exists(output_file5)
+        plt.close(fig5)
+
+        # Test case 6: Variable columns per row
+        sim6 = GrinSimulator(rows=4, cols_per_row=[8, 10, 12, 10], base_radius=160.0)
+        sim6.layout()
+        output_file6 = os.path.join(output_dir, "grin_layout_06_variable_cols.png")
+        fig6, ax6 = plot_grin_layout(sim6, filename=output_file6, show=False)
+        assert os.path.exists(output_file6)
+        plt.close(fig6)
+
+        # Test case 7: Small radius layout
+        sim7 = GrinSimulator(rows=3, cols=8, base_radius=80.0, radius_step=12.0)
+        sim7.layout()
+        output_file7 = os.path.join(output_dir, "grin_layout_07_small_radius.png")
+        fig7, ax7 = plot_grin_layout(sim7, filename=output_file7, show=False)
+        assert os.path.exists(output_file7)
+        plt.close(fig7)
+
+        # Test case 8: Large radius with tight pitch
+        sim8 = GrinSimulator(
+            rows=3,
+            cols=12,
+            base_radius=220.0,
+            radius_step=18.0,
+            base_pitch=17.0
+        )
+        sim8.layout()
+        output_file8 = os.path.join(output_dir, "grin_layout_08_large_tight.png")
+        fig8, ax8 = plot_grin_layout(sim8, filename=output_file8, show=False)
+        assert os.path.exists(output_file8)
+        plt.close(fig8)
+
+        # Test case 9: Different radius steps
+        sim9 = GrinSimulator(
+            rows=5,
+            cols=10,
+            base_radius=180.0,
+            radius_step=30.0,
+            base_pitch=19.5
+        )
+        sim9.layout()
+        output_file9 = os.path.join(output_dir, "grin_layout_09_large_steps.png")
+        fig9, ax9 = plot_grin_layout(sim9, filename=output_file9, show=False)
+        assert os.path.exists(output_file9)
+        plt.close(fig9)
+
+        # Test case 10: Complex three-center configuration
+        sim10 = GrinSimulator(
+            rows=4,
+            cols=14,
+            C_lower1=(70.0, 90.0),
+            C_upper=(100.0, 110.0),
+            C_lower2=(130.0, 90.0),
+            R_lower1_base=140.0,
+            R_upper_base=165.0,
+            R_lower2_base=140.0,
+            radius_step=22.0
+        )
+        sim10.layout()
+        output_file10 = os.path.join(output_dir, "grin_layout_10_complex_three_center.png")
+        fig10, ax10 = plot_grin_layout(sim10, filename=output_file10, show=False)
+        assert os.path.exists(output_file10)
+        plt.close(fig10)
