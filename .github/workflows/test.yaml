@@ -27,3 +27,12 @@ jobs:
       run: uv sync --all-extras
     - name: Run tests with pytest
       run: uv run pytest -v --cov=simulator --cov-report=xml --cov-report=term
+    - name: Run tests with pytest
+      run: uv run pytest -v --cov=simulator --cov-report=xml --cov-report=term
+    - name: Upload test PNG artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-output-pngs-py${{ matrix.python-version }}
+        path: test-outputs/*.png
+        if-no-files-found: warn
