@@ -1,7 +1,11 @@
 """Tests for grin_simulator module."""
 import pytest
 import numpy as np
+import os
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for testing
 from grin_simulator import GrinSimulator, SectionType, Section
+from visualizer import plot_grin_layout
 
 
 class TestSection:
@@ -141,3 +145,50 @@ class TestGrinSimulator:
         captured = capsys.readouterr()
         assert 'Grin Array Layout Summary' in captured.out
         assert 'Rows: 2' in captured.out
+
+    def test_generate_layout_visualization(self):
+        """Test generating and saving layout visualizations as PNG artifacts."""
+        import matplotlib.pyplot as plt
+
+        # Create output directory for test artifacts
+        output_dir = "test-outputs"
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Test case 1: Basic layout
+        sim1 = GrinSimulator(rows=3, cols=10)
+        sim1.layout()
+        output_file1 = os.path.join(output_dir, "grin_layout_basic.png")
+        fig1, ax1 = plot_grin_layout(sim1, filename=output_file1, show=False)
+        assert os.path.exists(output_file1)
+        plt.close(fig1)
+
+        # Test case 2: Three-center mode layout
+        sim2 = GrinSimulator(
+            rows=3,
+            cols=10,
+            C_lower1=(80.0, 100.0),
+            C_upper=(100.0, 100.0),
+            C_lower2=(120.0, 100.0),
+            R_lower1_base=150.0,
+            R_upper_base=160.0,
+            R_lower2_base=150.0
+        )
+        sim2.layout()
+        output_file2 = os.path.join(output_dir, "grin_layout_three_center.png")
+        fig2, ax2 = plot_grin_layout(sim2, filename=output_file2, show=False)
+        assert os.path.exists(output_file2)
+        plt.close(fig2)
+
+        # Test case 3: Custom configuration
+        sim3 = GrinSimulator(
+            rows=4,
+            cols=12,
+            base_radius=180.0,
+            radius_step=25.0,
+            base_pitch=20.0
+        )
+        sim3.layout()
+        output_file3 = os.path.join(output_dir, "grin_layout_custom.png")
+        fig3, ax3 = plot_grin_layout(sim3, filename=output_file3, show=False)
+        assert os.path.exists(output_file3)
+        plt.close(fig3)
